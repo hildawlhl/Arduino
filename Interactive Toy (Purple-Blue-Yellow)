@@ -1,0 +1,84 @@
+const int RledPin = 9;
+const int GledPin = 10;
+const int BledPin = 11;
+const int buttonPin = 2;
+
+int mood = 10;          
+const int neutralMood = 10; 
+int buttonState = 0;
+bool ButtonPressed = false;
+
+unsigned long previousMillis = 0;
+unsigned long lastPressTime = 0;
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(RledPin, OUTPUT);
+  pinMode(GledPin, OUTPUT);
+  pinMode(BledPin, OUTPUT);
+  
+  mood = neutralMood;
+  Serial.begin(9600);
+  lastPressTime = millis();
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  
+  buttonState = digitalRead(buttonPin);
+
+  
+  if (buttonState == HIGH && !ButtonPressed) {
+    mood = mood + 1;
+    if (mood > 20) mood = 20;     
+    ButtonPressed = true;
+    lastPressTime = currentMillis; 
+  }
+  
+  if (buttonState == LOW && ButtonPressed) {
+    ButtonPressed = false;
+  }
+
+  
+  if (currentMillis - lastPressTime >= 5000) {
+    if (currentMillis - previousMillis >= 1000) {
+      if (mood > 0) {
+        mood = mood - 1; 
+      }
+      previousMillis = currentMillis;
+    }
+  } else {
+    previousMillis = currentMillis; 
+  }
+
+  
+  showLEDState(mood);
+
+  
+  Serial.print("Mood: ");
+  Serial.println(mood);
+  
+  delay(10);
+}
+
+
+void showLEDState(int currentMood) {
+  int redVal = 0;
+  int greenVal = 0;
+  int blueVal = 0;
+
+  if (currentMood >= 10) {
+    redVal = 0;
+    greenVal = map(currentMood, 10, 20, 255, 0);
+    blueVal = map(currentMood, 10, 20, 0, 255);
+  } else {
+    redVal = map(currentMood, 0, 10, 255, 0);
+    greenVal = map(currentMood, 0, 10, 0, 255);
+    blueVal = 0;
+  }
+
+  analogWrite(RledPin, redVal);
+  analogWrite(GledPin, greenVal);
+  analogWrite(BledPin, blueVal);
+}
