@@ -1,0 +1,85 @@
+const int buttonPin = 2;
+const int RledPin = 9;
+const int GledPin = 10;
+const int BledPin = 11;
+
+int weatherMode = 0;
+int buttonState = 0;
+bool buttonPressed = false;
+
+unsigned long previousLightning = 0;
+bool isLightning = false;
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(RledPin, OUTPUT);
+  pinMode(GledPin, OUTPUT);
+  pinMode(BledPin, OUTPUT);
+  
+  Serial.begin(9600);
+  Serial.println("Weather: Clear Ocean");
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  buttonState = digitalRead(buttonPin);
+
+  if (buttonState == HIGH && !buttonPressed) {
+    weatherMode++;
+    if (weatherMode > 3) {
+      weatherMode = 0;
+    }
+    buttonPressed = true;
+    
+    if (weatherMode == 0) Serial.println("Weather: Clear Ocean");
+    if (weatherMode == 1) Serial.println("Weather: Golden Sunset");
+    if (weatherMode == 2) Serial.println("Weather: Thunderstorm");
+    if (weatherMode == 3) Serial.println("Weather: Bioluminescent Night");
+  }
+  
+  if (buttonState == LOW && buttonPressed) {
+    buttonPressed = false;
+  }
+
+  float tideWave = (sin(currentMillis / 600.0) + 1.0) / 2.0; 
+  float slowWave = (sin(currentMillis / 1200.0) + 1.0) / 2.0;
+
+  int r = 0, g = 0, b = 0;
+
+  if (weatherMode == 0) {
+    r = 0;
+    g = 50 + (100 * tideWave);
+    b = 150 + (105 * tideWave);
+  } 
+  else if (weatherMode == 1) {
+    r = 200 + (55 * tideWave); 
+    g = 40 + (40 * tideWave);   
+    b = 10 * tideWave;
+  } 
+  else if (weatherMode == 2) {
+    if (isLightning) {
+      r = 255; g = 255; b = 255;
+      if (currentMillis - previousLightning > 50) {
+        isLightning = false;
+      }
+    } else {
+      r = 15; g = 0; b = 25;
+      if (random(0, 1000) == 1) {
+        isLightning = true;
+        previousLightning = currentMillis;
+      }
+    }
+  } 
+  else if (weatherMode == 3) {
+    r = 0;
+    g = 10 + (40 * slowWave); 
+    b = 20 + (30 * slowWave); 
+  }
+
+  analogWrite(RledPin, r);
+  analogWrite(GledPin, g);
+  analogWrite(BledPin, b);
+
+  delay(10);
+}
