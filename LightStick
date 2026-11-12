@@ -1,0 +1,151 @@
+const int R_Pin = 9;
+const int G_Pin = 10;
+const int B_Pin = 11;
+const int Button_Pin = 2;
+
+int currentMode = 0;   // 0: Constant, 1: Blink, 2: Breathing
+int currentColor = 0;  // Cycles through static colors
+bool isRainbowMode = false; // Toggled by double click
+
+unsigned long lastReleaseTime = 0;
+int clickCount = 0;
+
+unsigned long pressStartTime = 0;
+bool lastButtonState = HIGH;
+bool isPressed = false;
+
+// Variables for Rainbow effect
+int rainbowHue = 0;
+unsigned long lastRainbowUpdate = 0;
+
+void setup() {
+  pinMode(R_Pin, OUTPUT);
+  pinMode(G_Pin, OUTPUT);
+  pinMode(B_Pin, OUTPUT);
+  pinMode(Button_Pin, INPUT_PULLUP);
+}
+
+void loop() {
+  bool buttonState = digitalRead(Button_Pin);
+  unsigned long now = millis();
+
+  // Button press detected
+  if (buttonState == LOW && lastButtonState == HIGH) {
+    pressStartTime = now;
+    isPressed = true;
+    delay(30); // Debounce
+  }
+
+  // Button release detected
+  if (buttonState == HIGH && lastButtonState == LOW && isPressed) {
+    unsigned long pressDuration = now - pressStartTime;
+    isPressed = false;
+
+    if (pressDuration >= 800) {
+      // Long press: switch main mode
+      isRainbowMode = false; // Turn off rainbow mode if active
+      currentMode = (currentMode + 1) % 3;
+      clickCount = 0;
+    } else {
+      // Record click for single/double click detection
+      clickCount++;
+      lastReleaseTime = now;
+    }
+    delay(30); // Debounce
+  }
+
+  // Handle single vs double click after short timeout
+  if (clickCount > 0 && (now - lastReleaseTime > 350)) {
+    if (clickCount == 1) {
+      // Short Click: change color
+      if (!isRainbowMode) {
+        currentColor = (currentColor + 1) % 7;
+      }
+    } else if (clickCount >= 2) {
+      // Double Click: toggle Rainbow Mode!
+      isRainbowMode = !isRainbowMode;
+    }
+    clickCount = 0;
+  }
+
+  lastButtonState = buttonState;
+
+  // Run active light mode
+  if (isRainbowMode) {
+    runRainbowMode();
+  } else {
+    runStandardMode();
+  }
+}
+
+void setColor(int rVal, int gVal, int bVal) {
+  // Active-LOW PWM output (0 = ON, 255 = OFF)
+  analogWrite(R_Pin, rVal);
+  analogWrite(G_Pin, gVal);
+  analogWrite(B_Pin, bVal);
+}
+
+void setStaticColor(int colorIndex) {
+  switch (colorIndex) {
+    case 0: setColor(0, 255, 255); break;   // Red
+    case 1: setColor(255, 0, 255); break;   // Green
+    case 2: setColor(255, 255, 0); break;   // Blue
+    case 3: setColor(0, 0, 255); break;     // Yellow
+    case 4: setColor(0, 255, 0); break;     // Purple
+    case 5: setColor(255, 0, 0); break;     // Cyan
+    case 6: setColor(0, 0, 0); break;       // White
+  }
+}
+
+void runStandardMode() {
+  if (currentMode == 0) {
+    // Mode 0: Constant Light
+    setStaticColor(currentColor);
+  } 
+  else if (currentMode == 1) {
+    // Mode 1: Blink Mode
+    if ((millis() / 500) % 2 == 0) {
+      setStaticColor(currentColor);
+    } else {
+      setColor(255, 255, 255); // OFF
+    }
+  } 
+  else if (currentMode == 2) {
+    // Mode 2: Breathing Light
+    float val = (exp(sin(millis() / 500.0 * M_PI)) - 0.36787944) * 108.0;
+    int breathVal = constrain(255 - val, 0, 255);
+    
+    int r = 255, g = 255, b = 255;
+    if (currentColor == 0 || currentColor == 3 || currentColor == 4 || currentColor == 6) r = breathVal;
+    if (currentColor == 1 || currentColor == 3 || currentColor == 5 || currentColor == 6) g = breathVal;
+    if (currentColor == 2 || currentColor == 4 || currentColor == 5 || currentColor == 6) b = breathVal;
+
+    setColor(r, g, b);
+  }
+}
+
+void runRainbowMode() {
+  if (millis() - lastRainbowUpdate >= 10) {
+    lastRainbowUpdate = millis();
+    rainbowHue = (rainbowHue + 1) % 768; // Smooth 0 to 767 transition
+  }
+
+  int r = 255, g = 255, b = 255;
+  if (rainbowHue < 256) {
+    r = rainbowHue;
+    g = 255 - rainbowHue;
+    b = 255;
+  } else if (rainbowHue < 512) {
+    int pos = rainbowHue - 256;
+    r = 255;
+    g = pos;
+    b = 255 - pos;
+  } else {
+    int pos = rainbowHue - 512;
+    r = 255 - pos;
+    g = 255;
+    b = pos;
+  }
+
+  setColor(r, g, b);
+}
