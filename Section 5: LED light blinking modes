@@ -1,0 +1,50 @@
+const int ledPin = 3;      // Single LED on Digital Pin 3
+const int buttonPin = 2;   // Button on Digital Pin 2
+
+int state = 0;             // 0: Steady, 1: Slow Blink, 2: Medium Blink, 3: Fast Blink
+bool lastButtonState = HIGH;
+unsigned long lastBlinkTimer = 0;
+bool ledState = LOW;
+
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+}
+
+void loop() {
+  bool buttonState = digitalRead(buttonPin);
+
+  // Detect button press (transition from HIGH to LOW)
+  if (buttonState == LOW && lastButtonState == HIGH) {
+    state = (state + 1) % 4; // Cycle through states 0 -> 1 -> 2 -> 3 -> 0
+    delay(50);               // Debounce delay
+  }
+  lastButtonState = buttonState;
+
+  // Execute current state mode
+  if (state == 0) {
+    // Mode 0: Steady lighting
+    digitalWrite(ledPin, HIGH);
+  } 
+  else if (state == 1) {
+    // Mode 1: Slow blink (1000ms interval)
+    blinkLED(1000);
+  } 
+  else if (state == 2) {
+    // Mode 2: Medium blink (400ms interval)
+    blinkLED(400);
+  } 
+  else if (state == 3) {
+    // Mode 3: Fast blink (100ms interval)
+    blinkLED(100);
+  }
+}
+
+// Non-blocking blink function using millis()
+void blinkLED(int interval) {
+  if (millis() - lastBlinkTimer >= interval) {
+    lastBlinkTimer = millis();
+    ledState = !ledState;
+    digitalWrite(ledPin, ledState);
+  }
+}
